@@ -16,7 +16,7 @@
     <li v-for="item in filteredItems" :key="item.id">
       <label :class="{ item: true, completed: item.completed }">
         {{ item.text }}
-        <input type="checkbox" v-model="item.completed" />
+        <input type="checkbox" v-model="item.completed" @click="completeItem(item)"/>
         <span class="checkmark"></span>
       </label>
       <button @click="deleteItem(item)" class="delete">X</button>
@@ -31,19 +31,13 @@ export default {
   name: 'Home',
   data() {
     return {
-      items: [{
-        text: "make an app",
-        completed: false,
-      }, {
-        text: "declare victory",
-        completed: false,
-      }, {
-        text: "profit",
-        completed: false
-      }],
+      items: [],
       text: '',
       show: 'all',
     }
+  },
+  created: function() {
+    this.getItems();
   },
   computed: {
     activeItems() {
@@ -64,17 +58,27 @@ export default {
     },
   },
   methods: {
-    addItem() {
-      this.items.push({
-        text: this.text,
-        completed: false
-      });
-      this.text = '';
+    async addItem() {
+      try {
+        await axios.post("/api/items", {
+          text: this.text,
+          completed: false
+        });
+        this.text = "";
+        this.getItems();
+      }
+      catch (error) {
+        console.log(error);
+      }
     },
-    deleteItem(item) {
-      var index = this.items.indexOf(item);
-      if (index > -1)
-        this.items.splice(index, 1);
+    async deleteItem(item) {
+      try {
+        await axios.delete("/api/items/" + item.id);
+        this.getItems();
+      }
+      catch (error) {
+        console.log(error);
+      }
     },
     showAll() {
       this.show = 'all';
@@ -86,9 +90,40 @@ export default {
       this.show = 'completed';
     },
     deleteCompleted() {
-      this.items = this.items.filter(item => {
-        return !item.completed;
-      });
+      let itemsToDelete = [];
+      for (let i = 0; i < this.items.length; i++) {
+        let item = this.items[i];
+        if (item.completed) {
+          itemsToDelete.push(item);
+        }
+      }
+
+      for (let i = 0; i < itemsToDelete.length; i++) {
+        this.deleteItem(itemsToDelete[i]);
+      }
+
+      this.getItems();
+    },
+    async getItems() {
+      try {
+        const response = await axios.get("/api/items");
+        this.items = response.data;
+      }
+      catch (error) {
+        console.log(error);
+      }
+    },
+    async completeItem(item) {
+      try {
+        axios.put("/api/items/" + item.id, {
+          text: item.text,
+          completed: !item.completed,
+        });
+        this.getItems();
+      }
+      catch (error) {
+        console.log(error);
+      }
     },
   }
 }
